@@ -20,6 +20,10 @@ class PredictorWidget(tk.Frame):
 
         self.history_table = tk.Frame(self)
         self.history_table.pack()
+        for i in range(len(self.history)):
+            for j in range(2): 
+                e = tk.Label(self.history_table, text=self.history[i][j])
+                e.grid(row=j, column=i)
 
         self.misprediction_stats = tk.Label(self)
         self.misprediction_stats.pack()
@@ -35,10 +39,10 @@ class PredictorWidget(tk.Frame):
         # Update GUI
         self.prediction_label.config(text = self.predictor.prediction())
         self.state_label.config(text = self.predictor.getState())
-        for i in range(len(self.history)):
-            for j in range(2): 
-                e = tk.Label(self.history_table, text=self.history[i][j])
-                e.grid(row=j, column=i)
+
+        tk.Label(self.history_table, text=self.history[len(self.history)-1][0]).grid(row=0, column=len(self.history)-1)
+        tk.Label(self.history_table, text=self.history[len(self.history)-1][1]).grid(row=1, column=len(self.history)-1)
+
         self.misprediction_stats.config(
             text = "Misprediction rate: {} out of {} ({:.2f}%)".format(
                 self.mispredicted, 
@@ -66,3 +70,9 @@ class BHTWidget(tk.Frame):
             tk.Label(self.table_frame, text=format(i, f'0{self.index_size}b')).grid(row=i+1, column=0)
             tk.Label(self.table_frame, text=self.table[i].getState()).grid(row=i+1, column=1)
             tk.Label(self.table_frame, text=self.table[i].prediction()).grid(row=i+1, column=2)
+
+    def update(self, i, direction):
+        self.table[i].update(direction)
+        tk.Label(self.table_frame, text=format(i, f'0{self.index_size}b')).grid(row=i+1, column=0)
+        tk.Label(self.table_frame, text=self.table[i].getState()).grid(row=i+1, column=1)
+        tk.Label(self.table_frame, text=self.table[i].prediction()).grid(row=i+1, column=2)

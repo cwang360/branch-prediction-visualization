@@ -18,7 +18,14 @@ class nBitPredictor:
         return format(self.state, f'0{self.bits}b')
 
 class nBitAgreePredictor(nBitPredictor):
-    def update(self, actual_direction, bias):
+    def __init__(self, bits, start_state):
+        nBitPredictor.__init__(self, bits, start_state)
+        self.bias = -1
+
+    def update(self, actual_direction):
+        if self.bias == -1:
+            self.bias = actual_direction
+
         if actual_direction == bias:
             if self.state < 2 ** bits - 1:
                 self.state += 1
