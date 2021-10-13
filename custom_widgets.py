@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from nbit_predictor import nBitPredictor
 
 class PredictorWidget(tk.Frame):
@@ -18,8 +19,10 @@ class PredictorWidget(tk.Frame):
         self.prediction_label = tk.Label(self, text = self.predictor.prediction())
         self.prediction_label.pack()
 
-        self.history_table = tk.Frame(self)
-        self.history_table.pack()
+        self.scrollable = ScrollableFrameX(self)
+        self.history_table = tk.Frame(self.scrollable.scrollable_frame)
+        self.history_table.pack(fill="both", expand=True)
+        self.scrollable.pack(fill="both", expand=True)
         for i in range(len(self.history)):
             for j in range(2): 
                 e = tk.Label(self.history_table, text=self.history[i][j])
@@ -58,7 +61,7 @@ class BHTWidget(tk.Frame):
         tk.Frame.__init__(self, parent, **options)
 
         self.table_label = tk.Label(self, text = self.name)
-        self.table_label.pack()
+        self.table_label.pack(fill="x", expand=True)
 
         self.table_frame = tk.Frame(self)
         self.table_frame.pack()
@@ -76,3 +79,45 @@ class BHTWidget(tk.Frame):
         tk.Label(self.table_frame, text=format(i, f'0{self.index_size}b')).grid(row=i+1, column=0)
         tk.Label(self.table_frame, text=self.table[i].getState()).grid(row=i+1, column=1)
         tk.Label(self.table_frame, text=self.table[i].prediction()).grid(row=i+1, column=2)
+
+class ScrollableFrameX(ttk.Frame):
+    def __init__(self, parent, **options):
+        super().__init__(parent, **options)
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="horizontal", command=canvas.xview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        canvas.configure(xscrollcommand=scrollbar.set)
+
+        canvas.pack(side="top", fill="both", expand=True)
+        scrollbar.pack(side="bottom", fill="x")
+
+class ScrollableFrameY(ttk.Frame):
+    def __init__(self, parent, **options):
+        super().__init__(parent, **options)
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
