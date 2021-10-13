@@ -9,7 +9,7 @@ class Application(tk.Frame):
         super().__init__(master)
         self.master = master
         self.master.title("Branch Prediction Visualizer")
-        self.master.geometry("600x600")
+        self.master.geometry("1000x700")
         self.inner = tk.Frame(self.master)
         self.inner.pack(fill="both", expand=True)
         self.pack()
@@ -40,10 +40,13 @@ class Application(tk.Frame):
 
     def branch_history_table(self):  
         self.clear()
-        input_history = []
         index_size = 3
-        bht = BHTWidget(self.inner, name="Branch History Table", predictor=nBitPredictor(2, 0b00), index_size=index_size)
+        bht = GShareWidget(self.inner, name="Branch History Table", ghr_size=5, predictor=nBitPredictor(2, 0b00), index_size=index_size)
         bht.pack(fill="x", expand=True)
+
+        ghr = tk.Label(self.inner, text=bht.get_ghr())
+        ghr.pack()
+
         tk.Button(self.inner, text = "Back", command = self.initial_screen).pack()
 
         tk.Label(self.inner, text = "Add a branch address (in binary) and actual direction").pack()
@@ -52,19 +55,28 @@ class Application(tk.Frame):
         direction_entry = ttk.Combobox(self.inner, state = "readonly", values = ["Taken", "Not Taken"])
         direction_entry.pack()
         
-        self.scrollable = ScrollableFrameY(self.master)
-        history_table = tk.Frame(self.scrollable.scrollable_frame)
-        history_table.pack(fill="both", expand=True)
-        self.scrollable.pack(fill="both", expand=True)
+        self.history_table = ttk.Treeview(self.master, columns=('1', '2', '3', '4', '5', '6'), show='headings')
+        self.history_table.heading('1', text='PC')
+        self.history_table.heading('2', text='PC bits for indexing')
+        self.history_table.heading('3', text='PC bits XOR GHR')
+        self.history_table.heading('4', text='Predicted')
+        self.history_table.heading('5', text='Actual')
+        self.history_table.heading('6', text='Misprediction Rate')
+        
+        self.history_table.pack(side="left", fill="both", expand=True)
+        self.scrollbar = ttk.Scrollbar(root, orient=tk.VERTICAL, command=self.history_table.yview)
+        self.history_table.configure(yscroll=self.scrollbar.set)
+        self.scrollbar.pack(side="right", fill="y")
 
 
         def update():
             direction = 1 if direction_entry.get() == "Taken" else 0
-            index = int(pc_entry.get(), 2) & ((2 ** index_size) - 1)
-            input_history.append([index, direction])
-            tk.Label(history_table, text=pc_entry.get()).grid(row=len(input_history)-1, column=0)
-            tk.Label(history_table, text=direction_entry.get()).grid(row=len(input_history)-1, column=1)
-            bht.update(index, direction)
+            # index = int(pc_entry.get(), 2) & ((2 ** index_size) - 1)
+            entry = bht.update(int(pc_entry.get(), 2) , direction)
+            
+            self.history_table.insert('', tk.END, values=entry)
+
+            ghr.config(text=bht.get_ghr())
 
         submit = tk.Button(self.inner, text = "Submit", command = update)
         submit.pack(padx = 3, pady = 3)
@@ -73,7 +85,8 @@ class Application(tk.Frame):
         for widget in self.inner.winfo_children():
             widget.destroy()
         try:
-            self.scrollable.destroy()
+            self.history_table.destroy()
+            self.scrollbar.destroy()
         except:
             pass
 
