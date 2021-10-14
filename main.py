@@ -4,12 +4,13 @@ from tkinter import ttk
 from nbit_predictor import nBitPredictor
 from custom_widgets import *
 
+
 class Application(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
         self.master.title("Branch Prediction Visualizer")
-        self.master.geometry("1000x700")
+        self.master.geometry("1200x700")
         self.inner = tk.Frame(self.master)
         self.inner.pack(fill="both", expand=True)
         self.pack()
@@ -17,8 +18,8 @@ class Application(tk.Frame):
 
     def initial_screen(self):
         self.clear()
-        tk.Button(self.inner, text = "Compare simple n-bit predictors", command = self.simple_n_bit_predictor).pack()
-        tk.Button(self.inner, text = "Branch History Table", command = self.branch_history_table).pack()
+        tk.Button(self.inner, text = "Compare simple n-bit saturating counters", command = self.simple_n_bit_predictor).pack()
+        tk.Button(self.inner, text = "Simulate a custom branch predictor", command = self.choose_bht_entries).pack()
 
     def simple_n_bit_predictor(self):
         self.clear()
@@ -37,6 +38,58 @@ class Application(tk.Frame):
                 widget.update(d)
     
         tk.Button(self.inner, text = "Back", command = self.initial_screen).pack()
+
+    def choose_bht_entries(self):
+        self.clear()
+        tk.Label(self.inner, text = "Choose BHT entry type and counter size").pack()
+
+        num_bits_entry = tk.Entry(self.inner)
+        num_bits_entry.insert(0, "Number of bits (int)")
+        num_bits_entry.pack()
+
+        bht_type_entry = ttk.Combobox(
+            self.inner, 
+            state = "readonly", 
+            values = ["-bit saturating counter", 
+                    "-bit agree predictor (designed to reduce negative interference with aliasing)"])
+        bht_type_entry.pack()
+
+        img = tk.PhotoImage(file='assets/bht_entry_choices.png')
+        image_panel = tk.Label(self.inner, image = img)
+        image_panel.image = img
+        image_panel.pack(side = "bottom", fill = "both", expand = "yes")
+
+        def next():
+            self.num_bits = num_bits_entry.get()
+            self.bht_type = bht_type_entry.get()
+            self.choose_indexing_method()
+
+        tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
+
+        
+    def choose_indexing_method(self):
+        self.clear()
+        tk.Label(self.inner, text = "Choose BHT indexing method").pack()
+        indexing_method_entry = ttk.Combobox(
+            self.inner, 
+            state = "readonly", 
+            values = ["PC", 
+                    "GHR",
+                    "GShare",
+                    "PShare"])
+        indexing_method_entry.pack()
+
+        img = tk.PhotoImage(file='assets/indexing_choices.png')
+        image_panel = tk.Label(self.inner, image = img)
+        image_panel.image = img
+        image_panel.pack(side = "bottom", fill = "both", expand = "yes")
+
+        def next():
+            self.indexing_method = indexing_method_entry.get()
+            self.branch_history_table()
+
+        tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
+
 
     def branch_history_table(self):  
         self.clear()
@@ -71,7 +124,6 @@ class Application(tk.Frame):
 
         def update():
             direction = 1 if direction_entry.get() == "Taken" else 0
-            # index = int(pc_entry.get(), 2) & ((2 ** index_size) - 1)
             entry = bht.update(int(pc_entry.get(), 2) , direction)
             
             self.history_table.insert('', tk.END, values=entry)
@@ -83,10 +135,10 @@ class Application(tk.Frame):
 
     def clear(self):
         for widget in self.inner.winfo_children():
-            widget.destroy()
+            widget.pack_forget()
         try:
-            self.history_table.destroy()
-            self.scrollbar.destroy()
+            self.history_table.pack_forget()
+            self.scrollbar.pack_forget()
         except:
             pass
 

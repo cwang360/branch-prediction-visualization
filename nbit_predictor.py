@@ -34,14 +34,7 @@ class nBitPredictor:
                 float(self.mispredicted) / self.total_predicted * 100)
     
 class nBitAgreePredictor(nBitPredictor):
-    def __init__(self, bits, start_state):
-        nBitPredictor.__init__(self, bits, start_state)
-        self.bias = -1
-
-    def update(self, actual_direction):
-        if self.bias == -1:
-            self.bias = actual_direction
-
+    def update(self, bias, actual_direction):
         if actual_direction == bias:
             if self.state < 2 ** bits - 1:
                 self.state += 1
