@@ -41,3 +41,19 @@ class nBitAgreePredictor(nBitPredictor):
         else:
             if self.state > 0:
                 self.state -= 1
+
+class PatternHistoryRegister():
+    def __init__(self, size, start_state):
+        self.size = size
+        self.register = start_state
+    
+    def update(self, direction):
+        self.register = (self.register << 1) | direction
+        if self.register >= 2 ** self.size:
+            self.register -= 2 ** self.size
+    
+    def get_value(self):
+        return self.register
+    
+    def get_text(self):
+        return format(self.register, f'0{self.size}b')
