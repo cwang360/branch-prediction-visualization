@@ -54,19 +54,12 @@ class BHTWidget(tk.Frame):
 
         tk.Frame.__init__(self, parent, **options)
 
-        # self.table_label = tk.Label(self, text = self.name)
-        # self.table_label.pack(fill="x", expand=True)
-
-        self.table_frame = tk.Frame(self)
+        self.table_frame = TableWidget(self, column_names=['Index','State','Prediction'])
         self.table_frame.pack()
 
-        tk.Label(self.table_frame, text="Index").grid(row=0, column=0)
-        tk.Label(self.table_frame, text="State").grid(row=0, column=1)
-        tk.Label(self.table_frame, text="Prediction").grid(row=0, column=2)
         for i in range(len(self.table)):
-            tk.Label(self.table_frame, text=format(i, f'0{self.index_size}b')).grid(row=i+1, column=0)
-            tk.Label(self.table_frame, text=self.table[i].getState()).grid(row=i+1, column=1)
-            tk.Label(self.table_frame, text=self.table[i].prediction()).grid(row=i+1, column=2)
+            entry = [format(i, f'0{self.index_size}b'), self.table[i].getState(), self.table[i].prediction()]
+            self.table_frame.add_row(entry)
 
     def update(self, pc, i, direction):
         # i is index of BHT!
@@ -80,9 +73,9 @@ class BHTWidget(tk.Frame):
             self.prediction_stats[pc]['mispredicted'] += 1
 
         self.table[i].update(direction)
-        tk.Label(self.table_frame, text=format(i, f'0{self.index_size}b')).grid(row=i+1, column=0)
-        tk.Label(self.table_frame, text=self.table[i].getState()).grid(row=i+1, column=1)
-        tk.Label(self.table_frame, text=self.table[i].prediction()).grid(row=i+1, column=2)
+        entry = [format(i, f'0{self.index_size}b'), self.table[i].getState(), self.table[i].prediction()]
+        self.table_frame.set_row_at_index(i, entry)
+        self.table_frame.set_focus(i)
 
     def stats(self, pc):
         return "{} out of {} ({:.2f}%)".format(
@@ -176,20 +169,33 @@ class TableWidget(ttk.Frame):
     def __init__(self, parent, **options):
         self.column_names = options.pop("column_names")
         super().__init__(parent, **options)
-        cols = [str(i) for i in range(len(self.column_names))]
+        cols = [i for i in range(len(self.column_names))]
+        self.index = 0
+
             
-        self.history_table = ttk.Treeview(self, columns=cols, show='headings')
-        for i, col in enumerate(cols):
-            self.history_table.heading(col, text=self.column_names[i])
-            self.history_table.column(col, minwidth=0, width=4*len(self.column_names[i])+80)
+        self.table = ttk.Treeview(self, columns=cols, show='headings')
+        for col in cols:
+            self.table.heading(col, text=self.column_names[col])
+            self.table.column(col, minwidth=0, width=4*len(self.column_names[col])+80)
         
-        self.history_table.pack(side="left", fill="both", expand=True)
-        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.history_table.yview)
-        self.history_table.configure(yscroll=self.scrollbar.set)
+        self.table.pack(side="left", fill="both", expand=True)
+        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.table.yview)
+        self.table.configure(yscroll=self.scrollbar.set)
         self.scrollbar.pack(side="right", fill="y")
 
     def add_row(self, entry):
-        self.history_table.insert('', tk.END, values=entry)
+        self.table.insert('', tk.END, id=self.index, values=entry, tags=("all"))
+        self.index += 1
+
+    def set_row_at_index(self, index, entry):
+        self.table.item(index, values=entry)
+
+    def set_focus(self, index):
+        for i in range(self.index):
+            self.table.item(i, tags='all')
+        self.table.item(index, tags='focus')
+        self.table.tag_configure('all', background='white')
+        self.table.tag_configure('focus', background='green')
 
 class ScrollableFrameX(ttk.Frame):
     def __init__(self, parent, **options):

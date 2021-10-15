@@ -29,11 +29,13 @@ Ideas to (maybe) implement and more state-of-the-art prediction methods.
 - Perceptron branch prediction  
 - Multiple predictors
     - Meta predictor; predictor for predictors (e.g. Alpha 21264 Tournament Predictor)
-    - Majority vote method, predictor fusion, partial tagging, adder tree
+    - Majority vote method (gskewed), predictor fusion, partial tagging, adder tree
 - More misprediction stats (e.g. input a # of stages to flush for each misprediction, and it'll tell you the slowdown rate compared to perfect prediction)
 - Sample T/NT patterns representing loop branches, dependent branches, etc. to show how different methods are better in certain cases.
-- Geometric history length predictors? TAGE, O-GEHL
-- n by n predictors? Multiple arrays of predictors, use PC to select index, then use GHR to select array.
+- Alloyed-history predictors: concatenate local and global history to use as index
+- Geometric history length predictors: TAGE, O-GEHL
+- n by n predictors: Multiple arrays of predictors, use PC to select index, then use GHR to select array.
+- YAGS
 - Detect loop branch and count iterations (Intel Pentium M)
 
 ## Usage and Dependencies
