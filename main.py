@@ -1,7 +1,7 @@
 import _tkinter
 import tkinter as tk
 from tkinter import ttk
-from nbit_predictor import nBitPredictor
+from predictor_components import nBitPredictor, nBitAgreePredictor
 from custom_widgets import *
 
 
@@ -60,8 +60,8 @@ class Application(tk.Frame):
         image_panel.pack(side = "bottom", fill = "both", expand = "yes")
 
         def next():
-            self.num_bits = num_bits_entry.get()
-            self.bht_type = bht_type_entry.get()
+            self.num_bits = int(num_bits_entry.get())
+            self.bht_entry = nBitPredictor(self.num_bits, 0) if bht_type_entry.get() == "-bit saturating counter" else nBitAgreePredictor(self.num_bits, 0)
             self.choose_indexing_method()
 
         tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
@@ -93,8 +93,8 @@ class Application(tk.Frame):
 
     def branch_history_table(self):  
         self.clear()
-        index_size = 3
-        bht = GSharePredictorWidget(self.inner, name="Branch History Table", ghr_size=5, predictor=nBitPredictor(2, 0b00), index_size=index_size)
+
+        bht = self.get_predictor()
         bht.pack(fill="x", expand=True)
 
         tk.Button(self.inner, text = "Back", command = self.initial_screen).pack()
@@ -116,7 +116,12 @@ class Application(tk.Frame):
         for widget in self.inner.winfo_children():
             widget.pack_forget()
 
-    
+    def get_predictor(self):
+        if self.indexing_method == "GHR":
+            return GHRPredictorWidget(self.inner, ghr_size=self.num_bits, predictor=self.bht_entry)
+        elif self.indexing_method == "GShare":
+            return GSharePredictorWidget(self.inner, ghr_size=self.num_bits, predictor=self.bht_entry, index_size=self.num_bits)
+
 root = tk.Tk()
 app = Application(master=root)
 app.mainloop() # Triggers GUI

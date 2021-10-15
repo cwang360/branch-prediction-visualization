@@ -11,7 +11,7 @@ Compare between simple n-bit saturating counters or simulate custom branch predi
 ![alt text](assets/general_architecture.png)
 - BHT entry types
     - n-bit saturating counters
-    - n-bit agree predictor (bias bit set based on first direction)
+    - n-bit agree predictor (bias bit set based on first direction) -- not fully implemented yet
 ![alt text](assets/bht_entry_choices.png)
 - Indexing methods for BHT
     - PC

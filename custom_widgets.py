@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from nbit_predictor import nBitPredictor, PatternHistoryRegister
+from predictor_components import nBitPredictor, PatternHistoryRegister
 import copy
 
 class PredictorWidget(tk.Frame):
@@ -45,7 +45,7 @@ class PredictorWidget(tk.Frame):
 
 class BHTWidget(tk.Frame):
     def __init__(self, parent, **options):
-        self.name = options.pop("name")
+        # self.name = options.pop("name")
         self.index_size = options.pop("index_size")
         predictor = options.pop("predictor")
         self.table = [copy.deepcopy(predictor) for _ in range((2 ** self.index_size))]
@@ -54,8 +54,8 @@ class BHTWidget(tk.Frame):
 
         tk.Frame.__init__(self, parent, **options)
 
-        self.table_label = tk.Label(self, text = self.name)
-        self.table_label.pack(fill="x", expand=True)
+        # self.table_label = tk.Label(self, text = self.name)
+        # self.table_label.pack(fill="x", expand=True)
 
         self.table_frame = tk.Frame(self)
         self.table_frame.pack()
@@ -90,10 +90,11 @@ class BHTWidget(tk.Frame):
                 self.prediction_stats[pc]['total'], 
                 float(self.prediction_stats[pc]['mispredicted']) / self.prediction_stats[pc]['total'] * 100)
     
-class GHTPredictorWidget(BHTWidget):
+class GHRPredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
-        self.ghr = PatternHistoryRegister(options.pop("ghr_size"), 0)
-        BHTWidget.__init__(self, parent, **options)
+        ghr_size = options.pop("ghr_size")
+        self.ghr = PatternHistoryRegister(ghr_size, 0)
+        BHTWidget.__init__(self, parent, **options, index_size=ghr_size)
 
         tk.Label(self, text="Global History Register").pack()
         self.ghr_text = tk.Label(self, text=self.ghr.get_text())
@@ -125,6 +126,8 @@ class GHTPredictorWidget(BHTWidget):
         ]
         
         self.ghr.update(direction)
+        self.ghr_text.config(text=self.ghr.get_text())
+        self.history_table.add_row(entry)
 
 class GSharePredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
