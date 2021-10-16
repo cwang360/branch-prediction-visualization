@@ -10,7 +10,7 @@ class Application(tk.Frame):
         super().__init__(master)
         self.master = master
         self.master.title("Branch Prediction Visualizer")
-        self.master.geometry("1000x700")
+        self.master.geometry("1300x700")
         self.inner = tk.Frame(self.master)
         self.inner.pack(fill="both", expand=True)
         self.pack()
@@ -76,7 +76,8 @@ class Application(tk.Frame):
             values = ["PC", 
                     "GHR",
                     "GShare",
-                    "PShare"])
+                    "PShare",
+                    "Local History"])
         indexing_method_entry.pack()
 
         img = tk.PhotoImage(file='assets/indexing_choices.png')
@@ -117,10 +118,16 @@ class Application(tk.Frame):
             widget.pack_forget()
 
     def get_predictor(self):
-        if self.indexing_method == "GHR":
-            return GHRPredictorWidget(self.inner, ghr_size=self.num_bits, predictor=self.bht_entry)
+        self.predictor_frame = tk.Frame(self.inner)
+        self.predictor_frame.pack()
+        if self.indexing_method == "PC":
+            return PCPredictorWidget(self.predictor_frame, index_size=self.num_bits, predictor=self.bht_entry)
+        elif self.indexing_method == "GHR":
+            return GHRPredictorWidget(self.predictor_frame, ghr_size=self.num_bits, predictor=self.bht_entry)
         elif self.indexing_method == "GShare":
-            return GSharePredictorWidget(self.inner, ghr_size=self.num_bits, predictor=self.bht_entry, index_size=self.num_bits)
+            return GSharePredictorWidget(self.predictor_frame, ghr_size=self.num_bits, predictor=self.bht_entry, index_size=self.num_bits)
+        elif self.indexing_method == "Local History":
+            return LocalHistoryPredictorWidget(self.predictor_frame, predictor=self.bht_entry, index_size=self.num_bits)
 
 root = tk.Tk()
 app = Application(master=root)

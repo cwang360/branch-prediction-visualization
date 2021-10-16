@@ -23,7 +23,7 @@ class nBitPredictor:
     def prediction_bit(self):
         return 1 if self.state & (1 << (self.bits - 1)) else 0
 
-    def getState(self):
+    def get_state(self):
         return format(self.state, f'0{self.bits}b')
 
     # Misprediction rate for each predictor, not for each branch instruction

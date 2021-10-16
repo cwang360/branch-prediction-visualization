@@ -12,7 +12,7 @@ class PredictorWidget(tk.Frame):
 
         tk.Label(self, text = self.name).pack()
 
-        self.state_label = tk.Label(self, text = self.predictor.getState())
+        self.state_label = tk.Label(self, text = self.predictor.get_state())
         self.state_label.pack()
 
         self.prediction_label = tk.Label(self, text = self.predictor.prediction())
@@ -36,7 +36,7 @@ class PredictorWidget(tk.Frame):
 
         # Update GUI
         self.prediction_label.config(text = self.predictor.prediction())
-        self.state_label.config(text = self.predictor.getState())
+        self.state_label.config(text = self.predictor.get_state())
 
         tk.Label(self.history_table, text=predicted).grid(row=0, column=self.predictor.total_predicted)
         tk.Label(self.history_table, text=actual).grid(row=1, column=self.predictor.total_predicted)
@@ -54,11 +54,19 @@ class BHTWidget(tk.Frame):
 
         tk.Frame.__init__(self, parent, **options)
 
-        self.table_frame = TableWidget(self, column_names=['Index','State','Prediction'])
-        self.table_frame.pack()
+        self.left = tk.Frame(self)
+        self.right = tk.Frame(self)
+        self.left.pack(side="left", fill="both", expand=True)
+        self.right.pack(side="right", fill="both", expand=True)
+        # self.left.grid(row=0, column=0, sticky="nsew")
+        # self.right.grid(row=0, column=1, sticky="nsew")
+
+        tk.Label(self.left, text="Branch History Table").pack()
+        self.table_frame = TableWidget(self.left, column_names=['Index','State','Prediction'])
+        self.table_frame.pack(fill="both", expand=True)
 
         for i in range(len(self.table)):
-            entry = [format(i, f'0{self.index_size}b'), self.table[i].getState(), self.table[i].prediction()]
+            entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), self.table[i].prediction()]
             self.table_frame.add_row(entry)
 
     def update(self, pc, i, direction):
@@ -73,7 +81,7 @@ class BHTWidget(tk.Frame):
             self.prediction_stats[pc]['mispredicted'] += 1
 
         self.table[i].update(direction)
-        entry = [format(i, f'0{self.index_size}b'), self.table[i].getState(), self.table[i].prediction()]
+        entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), self.table[i].prediction()]
         self.table_frame.set_row_at_index(i, entry)
         self.table_frame.set_focus(i)
 
@@ -83,14 +91,104 @@ class BHTWidget(tk.Frame):
                 self.prediction_stats[pc]['total'], 
                 float(self.prediction_stats[pc]['mispredicted']) / self.prediction_stats[pc]['total'] * 100)
     
+class PHTWidget(tk.Frame):
+    def __init__(self, parent, **options):
+        self.history_length = options.pop("history_length")
+        tk.Frame.__init__(self, parent, **options)
+
+        self.index = 0
+
+        self.pht = {}
+        tk.Label(self, text="Pattern History Table").pack()
+        self.table_frame = TableWidget(self, column_names=['PC', 'Pattern History'])
+        self.table_frame.pack(fill="both", expand=True)
+
+    def update(self, pc, direction):
+        if pc not in self.pht:
+            self.pht[pc] = {}
+            self.pht[pc]['history'] = PatternHistoryRegister(self.history_length, 0) 
+            self.pht[pc]['index'] = self.index
+            self.index += 1
+        self.pht[pc]['history'].update(direction)
+        self.table_frame.set_row_at_index(self.pht[pc]['index'], [format(pc, 'b'),self.pht[pc]['history'].get_text()])
+        self.table_frame.set_focus(self.pht[pc]['index'])
+        
+class LocalHistoryPredictorWidget(BHTWidget):
+    def __init__(self, parent, **options):
+        index_size = options["index_size"]
+        BHTWidget.__init__(self, parent, **options)
+
+        self.pht_widget = PHTWidget(self.right, history_length=index_size)
+        self.pht_widget.pack()
+        # PHTWidget.__init__(self, parent, history_length=options["index_size"])
+
+        columns = [
+            'PC',
+            'PHT Entry',
+            'Predicted',
+            'Actual',
+            'Misprediction Rate for this PC'
+        ]
+        self.history_table = TableWidget(self.right, column_names=columns)
+        self.history_table.pack(fill="both", expand=True)
+
+    def update(self, pc, direction):
+        self.pht_widget.update(pc, direction)
+        i = self.pht_widget.pht[pc]['history'].get_value()
+
+        prediction = self.table[i].prediction()
+
+        BHTWidget.update(self, pc, i, direction)
+
+        entry = [
+            format(pc, 'b'),
+            self.pht_widget.pht[pc]['history'].get_text(),
+            prediction,
+            'T' if direction == 1 else 'NT',
+            self.stats(pc)
+        ]
+        
+        self.history_table.add_row(entry)
+
+class PCPredictorWidget(BHTWidget):
+    def __init__(self, parent, **options):
+        BHTWidget.__init__(self, parent, **options)
+
+        columns = [
+            'PC',
+            'PC bits for indexing',
+            'Predicted',
+            'Actual',
+            'Misprediction Rate for this PC'
+        ]
+        self.history_table = TableWidget(self.right, column_names=columns)
+        self.history_table.pack(fill="both", expand=True)
+
+    def update(self, pc, direction):
+        i = pc & ((2 ** self.index_size) - 1)
+
+        prediction = self.table[i].prediction()
+
+        BHTWidget.update(self, pc, i, direction)
+
+        entry = [
+            format(pc, 'b'),
+            format(i, f'0{self.index_size}b'),
+            prediction,
+            'T' if direction == 1 else 'NT',
+            self.stats(pc)
+        ]
+        
+        self.history_table.add_row(entry)
+
 class GHRPredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
         ghr_size = options.pop("ghr_size")
         self.ghr = PatternHistoryRegister(ghr_size, 0)
         BHTWidget.__init__(self, parent, **options, index_size=ghr_size)
 
-        tk.Label(self, text="Global History Register").pack()
-        self.ghr_text = tk.Label(self, text=self.ghr.get_text())
+        tk.Label(self.right, text="Global History Register").pack()
+        self.ghr_text = tk.Label(self.right, text=self.ghr.get_text())
         self.ghr_text.pack()
 
         columns = [
@@ -100,8 +198,8 @@ class GHRPredictorWidget(BHTWidget):
             'Actual',
             'Misprediction Rate for this PC'
         ]
-        self.history_table = TableWidget(self, column_names=columns)
-        self.history_table.pack()
+        self.history_table = TableWidget(self.right, column_names=columns)
+        self.history_table.pack(fill="both", expand=True)
 
     def update(self, pc, direction):
         i = self.ghr.get_value()
@@ -127,8 +225,8 @@ class GSharePredictorWidget(BHTWidget):
         self.ghr = PatternHistoryRegister(options.pop("ghr_size"), 0)
         BHTWidget.__init__(self, parent, **options)
 
-        tk.Label(self, text="Global History Register").pack()
-        self.ghr_text = tk.Label(self, text=self.ghr.get_text())
+        tk.Label(self.right, text="Global History Register").pack()
+        self.ghr_text = tk.Label(self.right, text=self.ghr.get_text())
         self.ghr_text.pack()
 
         columns = [
@@ -140,8 +238,8 @@ class GSharePredictorWidget(BHTWidget):
             'Actual',
             'Misprediction Rate for this PC'
         ]
-        self.history_table = TableWidget(self, column_names=columns)
-        self.history_table.pack()
+        self.history_table = TableWidget(self.right, column_names=columns)
+        self.history_table.pack(fill="both", expand=True)
 
     def update(self, pc, direction):
         pc_i = pc & ((2 ** self.index_size) - 1)
@@ -188,7 +286,10 @@ class TableWidget(ttk.Frame):
         self.index += 1
 
     def set_row_at_index(self, index, entry):
-        self.table.item(index, values=entry)
+        if self.table.exists(index):
+            self.table.item(index, values=entry)
+        else:
+            self.add_row(entry)
 
     def set_focus(self, index):
         for i in range(self.index):
