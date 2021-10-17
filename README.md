@@ -1,6 +1,6 @@
 # branch-prediction-visualization
 
-Visualize and compare different branch prediction methods using Python and Tkinter GUI.  
+Visualize and compare different branch prediction methods for a pipelined processor.
 
 Currently only shows branch direction predictions (taken or not taken), not branch target address predictions or branch instruction predictions (determining whether instruction is branch), since these can generally be done efficiently with a branch target buffer (BTB) and return address stack (RAS) for function returns.  
 
@@ -30,17 +30,22 @@ Ideas to (maybe) implement and more state-of-the-art prediction methods.
 - Multiple predictors
     - Meta predictor; predictor for predictors (e.g. Alpha 21264 Tournament Predictor)
     - Majority vote method (gskewed), predictor fusion, partial tagging, adder tree
-- More misprediction stats (e.g. input a # of stages to flush for each misprediction, and it'll tell you the slowdown rate compared to perfect prediction)
-- Sample T/NT patterns representing loop branches, dependent branches, etc. to show how different methods are better in certain cases.
 - Alloyed-history predictors: concatenate local and global history to use as index
 - Geometric history length predictors: TAGE, O-GEHL
 - n by n predictors: Multiple arrays of predictors, use PC to select index, then use GHR to select array.
 - YAGS
 - Detect loop branch and count iterations (Intel Pentium M)
+- Additional features
+    - More misprediction stats (e.g. input a # of stages to flush for each misprediction, and it'll tell you the slowdown rate compared to perfect prediction)
+    - Sample T/NT patterns representing loop branches, dependent branches, etc. to show how different methods are better in certain cases.
+    - custom n-m bits of PC for indexing. Currently, lowest bits are used by default.
+    - More diagram-like UI
 
 ## Usage and Dependencies
-Make sure Tkinter and pillow are installed, and open/run `main.py` with Python 3.X. Below is an example simulation of branch instructions using the Local History prediction method, with a 16-entry local pattern history table and 8-entry branch history table.
-![alt text](assets/local_history_example.png)
+Make sure Tkinter and pillow are installed, and open/run `main.py` with Python 3.X.   
+Below is an example simulation of branch instructions using the Local History prediction method, with a 16-entry local pattern history table and 8-entry branch history table.
+![alt text](assets/local_history_example.png)  
+An `example.txt` file is provided for an example file format for simulating branch instructions from a file upload.
 
 ## References
 - Agree predictors:  

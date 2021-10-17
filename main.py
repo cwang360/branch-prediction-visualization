@@ -1,6 +1,6 @@
 import _tkinter
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
 from predictor_components import nBitPredictor, nBitAgreePredictor
 from predictor_widgets import *
 from gui_widgets import ImageWidget, ScrollableFrameY
@@ -134,6 +134,27 @@ class Application(tk.Frame):
 
         submit = tk.Button(self.inner, text = "Submit", command = update)
         submit.pack(padx = 3, pady = 3)
+
+        def simulate_from_file(event=None):
+            filename = filedialog.askopenfilename()
+            if not filename.endswith('.txt'):
+                messagebox.showerror('Error', 'File must be .txt file')
+                return
+            with open(filename, 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    try:
+                        tokens = line.split()
+                        direction = 1 if tokens[1] == "T" else 0
+                        bht.update(int(tokens[0]), direction)
+                    except:
+                        messagebox.showerror('Error', 'File lines are not formatted properly. Each line must have PC and T/NT separated by whitespace.')
+                        return
+        tk.Label(self.inner, text = "Alternatively, select a text file to simulate.").pack()
+        tk.Label(self.inner, text = "Each line in the file must start with a PC value and T/NT separated by whitespace.").pack()
+
+        button = tk.Button(self.inner, text='Select File', command=simulate_from_file)
+        button.pack()
 
     def clear(self):
         for widget in self.inner.winfo_children():
