@@ -146,7 +146,7 @@ class Application(tk.Frame):
                     try:
                         tokens = line.split()
                         direction = 1 if tokens[1] == "T" else 0
-                        bht.update(int(tokens[0]), direction)
+                        bht.update(int(tokens[0], 2), direction)
                     except:
                         messagebox.showerror('Error', 'File lines are not formatted properly. Each line must have PC and T/NT separated by whitespace.')
                         return
