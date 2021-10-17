@@ -2,7 +2,8 @@ import _tkinter
 import tkinter as tk
 from tkinter import ttk
 from predictor_components import nBitPredictor, nBitAgreePredictor
-from custom_widgets import *
+from predictor_widgets import *
+from gui_widgets import ImageWidget, ScrollableFrameY
 
 
 class Application(tk.Frame):
@@ -19,8 +20,10 @@ class Application(tk.Frame):
     def initial_screen(self):
         self.clear()
         tk.Button(self.inner, text = "Compare simple n-bit saturating counters", command = self.simple_n_bit_predictor).pack()
+        ImageWidget(self.inner, image_path="assets/n_bit_predictor.png").pack()
         tk.Button(self.inner, text = "Simulate a custom branch predictor", command = self.choose_bht_entries).pack()
-        
+        ImageWidget(self.inner, image_path="assets/general_architecture.png").pack()
+
     def simple_n_bit_predictor(self):
         self.clear()
         self.predictor_widgets = [
@@ -54,19 +57,14 @@ class Application(tk.Frame):
                     "-bit agree predictor"])
         bht_type_entry.pack()
 
-        img = tk.PhotoImage(file='assets/bht_entry_choices.png')
-        image_panel = tk.Label(self.inner, image = img)
-        image_panel.image = img
-        image_panel.pack(side = "bottom", fill = "both", expand = "yes")
-
         def next():
             self.num_bits = int(num_bits_entry.get())
             self.bht_entry = nBitPredictor(self.num_bits, 0) if bht_type_entry.get() == "-bit saturating counter" else nBitAgreePredictor(self.num_bits, 0)
             self.choose_indexing_method()
 
         tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
+        ImageWidget(self.inner, image_path="assets/bht_entry_choices.png").pack()
 
-        
     def choose_indexing_method(self):
         self.clear()
         tk.Label(self.inner, text = "Choose BHT indexing method").pack()
@@ -80,17 +78,41 @@ class Application(tk.Frame):
                     "Local History"])
         indexing_method_entry.pack()
 
-        img = tk.PhotoImage(file='assets/indexing_choices.png')
-        image_panel = tk.Label(self.inner, image = img)
-        image_panel.image = img
-        image_panel.pack(side = "bottom", fill = "both", expand = "yes")
-
         def next():
             self.indexing_method = indexing_method_entry.get()
-            self.branch_history_table()
+            self.choose_additional_settings()
 
         tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
+        ImageWidget(self.inner, image_path="assets/indexing_choices.png").pack()
 
+    def choose_additional_settings(self):
+        self.clear()
+
+        tk.Label(self.inner, text = "BHT index size (BHT will have 2^(index size) entries)").pack()
+        bht_index_entry = tk.Entry(self.inner)
+        bht_index_entry.pack()
+
+        if self.indexing_method == "PC":
+            tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to index BHT").pack()
+        elif self.indexing_method == "GHR":
+            tk.Label(self.inner, text = "GHR will have the same bit size and will be used to index BHT").pack()
+        elif self.indexing_method == "GShare":
+            tk.Label(self.inner, text = "GHR will have the same bit size.").pack()
+            tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to XOR GHR to index BHT").pack()
+        elif self.indexing_method == "Local History":
+            tk.Label(self.inner, text = "PHT index size (PHT will have 2^(index size) entries)").pack()
+            pht_index_entry = tk.Entry(self.inner)
+            pht_index_entry.pack()
+        elif self.indexing_method =="PShare":
+            tk.Label(self.inner, text = "PHT index size will be the same as BHT index size.").pack()
+            tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to XOR corresponding PHT entry to index BHT").pack()
+
+        def next():
+            self.bht_index_size = int(bht_index_entry.get())
+            if self.indexing_method == "Local History":
+                self.pht_index_size = int(pht_index_entry.get())
+            self.branch_history_table()
+        tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
 
     def branch_history_table(self):  
         self.clear()
@@ -121,13 +143,16 @@ class Application(tk.Frame):
         self.predictor_frame = tk.Frame(self.inner)
         self.predictor_frame.pack()
         if self.indexing_method == "PC":
-            return PCPredictorWidget(self.predictor_frame, index_size=self.num_bits, predictor=self.bht_entry)
+            return PCPredictorWidget(self.predictor_frame, index_size=self.bht_index_size, predictor=self.bht_entry)
         elif self.indexing_method == "GHR":
-            return GHRPredictorWidget(self.predictor_frame, ghr_size=self.num_bits, predictor=self.bht_entry)
+            return GHRPredictorWidget(self.predictor_frame, ghr_size=self.bht_index_size, predictor=self.bht_entry)
         elif self.indexing_method == "GShare":
-            return GSharePredictorWidget(self.predictor_frame, ghr_size=self.num_bits, predictor=self.bht_entry, index_size=self.num_bits)
+            return GSharePredictorWidget(self.predictor_frame, ghr_size=self.bht_index_size, predictor=self.bht_entry, index_size=self.bht_index_size)
         elif self.indexing_method == "Local History":
-            return LocalHistoryPredictorWidget(self.predictor_frame, predictor=self.bht_entry, index_size=self.num_bits)
+            return LocalHistoryPredictorWidget(self.predictor_frame, predictor=self.bht_entry, pht_index_size=self.pht_index_size, bht_index_size=self.bht_index_size)
+        elif self.indexing_method == "PShare":
+            return PSharePredictorWidget(self.predictor_frame, index_size=self.bht_index_size, predictor=self.bht_entry)
+
 
 root = tk.Tk()
 app = Application(master=root)

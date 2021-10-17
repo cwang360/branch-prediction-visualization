@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from predictor_components import nBitPredictor, PatternHistoryRegister
+from gui_widgets import TableWidget, ScrollableFrameX
 import copy
 
 class PredictorWidget(tk.Frame):
@@ -43,9 +44,12 @@ class PredictorWidget(tk.Frame):
 
         self.misprediction_stats.config(text = "Misprediction rate: " + self.predictor.misprediction_rate())
 
+# class NBitPredictorComparisonWidget(tk.Frame):
+#     def __init__(self, parent, **options):
+#         self.table = TableWidget(column_names=["Actual"])
+
 class BHTWidget(tk.Frame):
     def __init__(self, parent, **options):
-        # self.name = options.pop("name")
         self.index_size = options.pop("index_size")
         predictor = options.pop("predictor")
         self.table = [copy.deepcopy(predictor) for _ in range((2 ** self.index_size))]
@@ -54,20 +58,25 @@ class BHTWidget(tk.Frame):
 
         tk.Frame.__init__(self, parent, **options)
 
-        self.left = tk.Frame(self)
-        self.right = tk.Frame(self)
+        self.top = tk.Frame(self)
+        self.left = tk.Frame(self.top)
+        self.right = tk.Frame(self.top)
+        self.top.pack(fill="both", expand=True)
         self.left.pack(side="left", fill="both", expand=True)
         self.right.pack(side="right", fill="both", expand=True)
-        # self.left.grid(row=0, column=0, sticky="nsew")
-        # self.right.grid(row=0, column=1, sticky="nsew")
 
-        tk.Label(self.left, text="Branch History Table").pack()
-        self.table_frame = TableWidget(self.left, column_names=['Index','State','Prediction'])
+
+    def pack_all(self):
+        tk.Label(self.right, text="Branch History Table").pack()
+        self.table_frame = TableWidget(self.right, column_names=['Index','State','Prediction'])
         self.table_frame.pack(fill="both", expand=True)
 
         for i in range(len(self.table)):
             entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), self.table[i].prediction()]
             self.table_frame.add_row(entry)
+
+        self.history_table = TableWidget(self, column_names=self.columns)
+        self.history_table.pack(fill="both", expand=True)
 
     def update(self, pc, i, direction):
         # i is index of BHT!
@@ -94,76 +103,112 @@ class BHTWidget(tk.Frame):
 class PHTWidget(tk.Frame):
     def __init__(self, parent, **options):
         self.history_length = options.pop("history_length")
+        self.index_size = options.pop('index_size')
         tk.Frame.__init__(self, parent, **options)
 
-        self.index = 0
+        self.pht = [copy.deepcopy(PatternHistoryRegister(self.history_length, 0)) for _ in range((2 ** self.index_size))]
 
-        self.pht = {}
         tk.Label(self, text="Pattern History Table").pack()
         self.table_frame = TableWidget(self, column_names=['PC', 'Pattern History'])
+        for i in range(len(self.pht)):
+            entry = [format(i, f'0{self.index_size}b'),self.pht[i].get_text()]
+            self.table_frame.add_row(entry)
         self.table_frame.pack(fill="both", expand=True)
 
-    def update(self, pc, direction):
-        if pc not in self.pht:
-            self.pht[pc] = {}
-            self.pht[pc]['history'] = PatternHistoryRegister(self.history_length, 0) 
-            self.pht[pc]['index'] = self.index
-            self.index += 1
-        self.pht[pc]['history'].update(direction)
-        self.table_frame.set_row_at_index(self.pht[pc]['index'], [format(pc, 'b'),self.pht[pc]['history'].get_text()])
-        self.table_frame.set_focus(self.pht[pc]['index'])
+    def update(self, i, direction):
+        self.pht[i].update(direction)
+        self.table_frame.set_row_at_index(i, [format(i, f'0{self.index_size}b'),self.pht[i].get_text()])
+        self.table_frame.set_focus(i)
         
 class LocalHistoryPredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
-        index_size = options["index_size"]
-        BHTWidget.__init__(self, parent, **options)
-
-        self.pht_widget = PHTWidget(self.right, history_length=index_size)
-        self.pht_widget.pack()
-        # PHTWidget.__init__(self, parent, history_length=options["index_size"])
-
-        columns = [
+        self.bht_index_size = options.pop("bht_index_size")
+        self.pht_index_size = options.pop("pht_index_size")
+        self.columns = [
             'PC',
+            'PC bits for indexing',
             'PHT Entry',
             'Predicted',
             'Actual',
             'Misprediction Rate for this PC'
         ]
-        self.history_table = TableWidget(self.right, column_names=columns)
-        self.history_table.pack(fill="both", expand=True)
+       
+        BHTWidget.__init__(self, parent, index_size=self.bht_index_size, **options)
+        self.pht_widget = PHTWidget(self.left, index_size=self.pht_index_size, history_length=self.bht_index_size)
+        self.pht_widget.pack(fill="both", expand=True)
+        self.pack_all()
 
+        
     def update(self, pc, direction):
-        self.pht_widget.update(pc, direction)
-        i = self.pht_widget.pht[pc]['history'].get_value()
+        i = pc & ((2 ** self.index_size) - 1)
+        
+        prediction = self.table[self.pht_widget.pht[i].get_value()].prediction()
 
+        BHTWidget.update(self, pc, self.pht_widget.pht[i].get_value(), direction)
+
+        entry = [
+            format(pc, 'b'),
+            format(i, f'0{self.index_size}b'),
+            self.pht_widget.pht[i].get_text(),
+            prediction,
+            'T' if direction == 1 else 'NT',
+            self.stats(pc)
+        ]
+        
+        self.pht_widget.update(i, direction)
+        self.history_table.add_row(entry)
+
+class PSharePredictorWidget(BHTWidget):
+    def __init__(self, parent, **options):
+        self.columns = [
+            'PC',
+            'PC bits for indexing',
+            'PHT Entry',
+            'PHT Entry XOR PC Bits',
+            'Predicted',
+            'Actual',
+            'Misprediction Rate for this PC'
+        ]
+       
+        BHTWidget.__init__(self, parent, **options)
+        self.pht_widget = PHTWidget(self.left, index_size=self.index_size, history_length=self.index_size)
+        self.pht_widget.pack(fill="both", expand=True)
+        self.pack_all()
+
+        
+    def update(self, pc, direction):
+        pc_i = pc & ((2 ** self.index_size) - 1)
+        i = pc_i ^ self.pht_widget.pht[pc_i].get_value()
+        
         prediction = self.table[i].prediction()
 
         BHTWidget.update(self, pc, i, direction)
 
         entry = [
             format(pc, 'b'),
-            self.pht_widget.pht[pc]['history'].get_text(),
+            format(pc_i, f'0{self.index_size}b'),
+            self.pht_widget.pht[pc_i].get_text(),
+            format(i, f'0{self.index_size}b'),
             prediction,
             'T' if direction == 1 else 'NT',
             self.stats(pc)
         ]
         
+        self.pht_widget.update(i, direction)
         self.history_table.add_row(entry)
 
 class PCPredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
-        BHTWidget.__init__(self, parent, **options)
 
-        columns = [
+        self.columns = [
             'PC',
             'PC bits for indexing',
             'Predicted',
             'Actual',
             'Misprediction Rate for this PC'
         ]
-        self.history_table = TableWidget(self.right, column_names=columns)
-        self.history_table.pack(fill="both", expand=True)
-
+        BHTWidget.__init__(self, parent, **options)
+        self.pack_all()
     def update(self, pc, direction):
         i = pc & ((2 ** self.index_size) - 1)
 
@@ -185,22 +230,19 @@ class GHRPredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
         ghr_size = options.pop("ghr_size")
         self.ghr = PatternHistoryRegister(ghr_size, 0)
-        BHTWidget.__init__(self, parent, **options, index_size=ghr_size)
-
-        tk.Label(self.right, text="Global History Register").pack()
-        self.ghr_text = tk.Label(self.right, text=self.ghr.get_text())
-        self.ghr_text.pack()
-
-        columns = [
+        self.columns = [
             'PC',
             'GHR',
             'Predicted',
             'Actual',
             'Misprediction Rate for this PC'
         ]
-        self.history_table = TableWidget(self.right, column_names=columns)
-        self.history_table.pack(fill="both", expand=True)
+        BHTWidget.__init__(self, parent, **options, index_size=ghr_size)
 
+        tk.Label(self.left, text="Global History Register").pack()
+        self.ghr_text = tk.Label(self.left, text=self.ghr.get_text())
+        self.ghr_text.pack()
+        self.pack_all()
     def update(self, pc, direction):
         i = self.ghr.get_value()
 
@@ -223,13 +265,7 @@ class GHRPredictorWidget(BHTWidget):
 class GSharePredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
         self.ghr = PatternHistoryRegister(options.pop("ghr_size"), 0)
-        BHTWidget.__init__(self, parent, **options)
-
-        tk.Label(self.right, text="Global History Register").pack()
-        self.ghr_text = tk.Label(self.right, text=self.ghr.get_text())
-        self.ghr_text.pack()
-
-        columns = [
+        self.columns = [
             'PC',
             'PC bits for indexing',
             'GHR',
@@ -238,8 +274,11 @@ class GSharePredictorWidget(BHTWidget):
             'Actual',
             'Misprediction Rate for this PC'
         ]
-        self.history_table = TableWidget(self.right, column_names=columns)
-        self.history_table.pack(fill="both", expand=True)
+        BHTWidget.__init__(self, parent, **options)
+        tk.Label(self.left, text="Global History Register").pack()
+        self.ghr_text = tk.Label(self.left, text=self.ghr.get_text())
+        self.ghr_text.pack()
+        self.pack_all()
 
     def update(self, pc, direction):
         pc_i = pc & ((2 ** self.index_size) - 1)
@@ -263,79 +302,3 @@ class GSharePredictorWidget(BHTWidget):
         self.ghr_text.config(text=self.ghr.get_text())
         self.history_table.add_row(entry)
 
-class TableWidget(ttk.Frame):
-    def __init__(self, parent, **options):
-        self.column_names = options.pop("column_names")
-        super().__init__(parent, **options)
-        cols = [i for i in range(len(self.column_names))]
-        self.index = 0
-
-            
-        self.table = ttk.Treeview(self, columns=cols, show='headings')
-        for col in cols:
-            self.table.heading(col, text=self.column_names[col])
-            self.table.column(col, minwidth=0, width=4*len(self.column_names[col])+80)
-        
-        self.table.pack(side="left", fill="both", expand=True)
-        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.table.yview)
-        self.table.configure(yscroll=self.scrollbar.set)
-        self.scrollbar.pack(side="right", fill="y")
-
-    def add_row(self, entry):
-        self.table.insert('', tk.END, id=self.index, values=entry, tags=("all"))
-        self.index += 1
-
-    def set_row_at_index(self, index, entry):
-        if self.table.exists(index):
-            self.table.item(index, values=entry)
-        else:
-            self.add_row(entry)
-
-    def set_focus(self, index):
-        for i in range(self.index):
-            self.table.item(i, tags='all')
-        self.table.item(index, tags='focus')
-        self.table.tag_configure('all', background='white')
-        self.table.tag_configure('focus', background='green')
-
-class ScrollableFrameX(ttk.Frame):
-    def __init__(self, parent, **options):
-        super().__init__(parent, **options)
-        canvas = tk.Canvas(self)
-        scrollbar = ttk.Scrollbar(self, orient="horizontal", command=canvas.xview)
-        self.scrollable_frame = ttk.Frame(canvas)
-
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
-        )
-
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-
-        canvas.configure(xscrollcommand=scrollbar.set)
-
-        canvas.pack(side="top", fill="both", expand=True)
-        scrollbar.pack(side="bottom", fill="x")
-
-class ScrollableFrameY(ttk.Frame):
-    def __init__(self, parent, **options):
-        super().__init__(parent, **options)
-        canvas = tk.Canvas(self)
-        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        self.scrollable_frame = ttk.Frame(canvas)
-
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
-        )
-
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")

@@ -11,14 +11,14 @@ Compare between simple n-bit saturating counters or simulate custom branch predi
 ![alt text](assets/general_architecture.png)
 - BHT entry types
     - n-bit saturating counters
-    - n-bit agree predictor (bias bit set based on first direction) -- not fully implemented yet
+    - *n-bit agree predictor (bias bit set based on first direction) -- not fully implemented yet*
 ![alt text](assets/bht_entry_choices.png)
 - Indexing methods for BHT
     - PC
     - GHR
     - GHR XOR PC (GShare)
     - PHT entry XOR PC (PShare)
-    - ***ADD:*** PC index PHT, PHT entry index BHT (Local History)
+    - PC index PHT, PHT entry index BHT (Local History)
 ![alt text](assets/indexing_choices.png)
 - Input: list of (PC of branch instruction, T or NT)
 
