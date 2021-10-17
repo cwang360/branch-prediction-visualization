@@ -109,7 +109,7 @@ class PHTWidget(tk.Frame):
         self.pht = [copy.deepcopy(PatternHistoryRegister(self.history_length, 0)) for _ in range((2 ** self.index_size))]
 
         tk.Label(self, text="Pattern History Table").pack()
-        self.table_frame = TableWidget(self, column_names=['PC', 'Pattern History'])
+        self.table_frame = TableWidget(self, column_names=['Index', 'Pattern History'])
         for i in range(len(self.pht)):
             entry = [format(i, f'0{self.index_size}b'),self.pht[i].get_text()]
             self.table_frame.add_row(entry)

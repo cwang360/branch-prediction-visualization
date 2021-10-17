@@ -35,7 +35,7 @@ class TableWidget(ttk.Frame):
             self.table.item(i, tags='all')
         self.table.item(index, tags='focus')
         self.table.tag_configure('all', background='white')
-        self.table.tag_configure('focus', background='green')
+        self.table.tag_configure('focus', background='#a8ccff')
         self.table.yview_moveto(index/self.index)
 
 class ScrollableFrameX(ttk.Frame):

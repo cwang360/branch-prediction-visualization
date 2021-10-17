@@ -39,7 +39,8 @@ Ideas to (maybe) implement and more state-of-the-art prediction methods.
 - Detect loop branch and count iterations (Intel Pentium M)
 
 ## Usage and Dependencies
-Make sure Tkinter and pillow are installed, and open/run `main.py` with Python 3.X
+Make sure Tkinter and pillow are installed, and open/run `main.py` with Python 3.X. Below is an example simulation of branch instructions using the Local History prediction method, with a 16-entry local pattern history table and 8-entry branch history table.
+![alt text](assets/local_history_example.png)
 
 ## References
 - Agree predictors:  
