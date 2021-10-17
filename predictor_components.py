@@ -36,11 +36,17 @@ class nBitPredictor:
 class nBitAgreePredictor(nBitPredictor):
     def update(self, bias, actual_direction):
         if actual_direction == bias:
-            if self.state < 2 ** bits - 1:
+            if self.state < 2 ** self.bits - 1:
                 self.state += 1
         else:
             if self.state > 0:
                 self.state -= 1
+
+    def prediction(self, bias):
+        return 'T' if self.prediction_bit(bias) else 'NT'
+    
+    def prediction_bit(self, bias):
+        return bias if self.state & (1 << (self.bits - 1)) else not bias
 
 class PatternHistoryRegister():
     def __init__(self, size, start_state):

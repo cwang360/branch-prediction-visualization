@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from predictor_components import nBitPredictor, PatternHistoryRegister
+from predictor_components import *
 from gui_widgets import TableWidget, ScrollableFrameX
 import copy
 
@@ -52,6 +52,7 @@ class BHTWidget(tk.Frame):
     def __init__(self, parent, **options):
         self.index_size = options.pop("index_size")
         predictor = options.pop("predictor")
+        self.agree_predictor = isinstance(predictor, nBitAgreePredictor)
         self.table = [copy.deepcopy(predictor) for _ in range((2 ** self.index_size))]
 
         self.prediction_stats = {}
@@ -67,20 +68,34 @@ class BHTWidget(tk.Frame):
 
 
     def pack_all(self):
-        tk.Label(self.right, text="Branch History Table").pack()
-        self.table_frame = TableWidget(self.right, column_names=['Index','State','Prediction'])
+        self.bht_frame = tk.Frame(self.right)
+        tk.Label(self.bht_frame, text="Branch History Table").pack()
+        self.table_frame = TableWidget(self.bht_frame, column_names=['Index','State','Prediction'])
         self.table_frame.pack(fill="both", expand=True)
-
-        for i in range(len(self.table)):
-            entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), self.table[i].prediction()]
-            self.table_frame.add_row(entry)
+        self.bht_frame.pack(side="left", fill="both", expand=True)
 
         self.history_table = TableWidget(self, column_names=self.columns)
         self.history_table.pack(fill="both", expand=True)
 
+        if self.agree_predictor:
+            self.bias_table = BiasBitTableWidget(self.right)
+            self.bias_table.pack(side="right", fill="both", expand=True)
+
+        for i in range(len(self.table)):
+            if self.agree_predictor:
+                predicted = self.table[i].prediction(0)
+            else:
+                predicted = self.table[i].prediction()
+            entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), predicted]
+            self.table_frame.add_row(entry)
+
     def update(self, pc, i, direction):
         # i is index of BHT!
-        predicted = self.table[i].prediction()
+        if self.agree_predictor:
+            predicted = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            predicted = self.table[i].prediction()
+
         actual = 'T' if direction == 1 else 'NT'
 
         if pc not in self.prediction_stats:
@@ -89,8 +104,16 @@ class BHTWidget(tk.Frame):
         if predicted is not actual:
             self.prediction_stats[pc]['mispredicted'] += 1
 
-        self.table[i].update(direction)
-        entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), self.table[i].prediction()]
+        if self.agree_predictor:
+            self.table[i].update(self.bias_table.get_or_set_bias(pc, direction), direction)
+        else:
+            self.table[i].update(direction)
+
+        if self.agree_predictor:
+            new_predicted = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            new_predicted = self.table[i].prediction()
+        entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), new_predicted]
         self.table_frame.set_row_at_index(i, entry)
         self.table_frame.set_focus(i)
 
@@ -119,6 +142,33 @@ class PHTWidget(tk.Frame):
         self.pht[i].update(direction)
         self.table_frame.set_row_at_index(i, [format(i, f'0{self.index_size}b'),self.pht[i].get_text()])
         self.table_frame.set_focus(i)
+
+class BiasBitTableWidget(tk.Frame):
+    def __init__(self, parent, **options):
+        tk.Frame.__init__(self, parent, **options)
+
+        self.record = {}
+
+        tk.Label(self, text="Bias Bit Table").pack()
+        self.table_frame = TableWidget(self, column_names=['PC', 'Bias Bit'])
+        self.table_frame.pack(fill="both", expand=True)
+
+    def set_bias(self, pc, direction):
+        if pc not in self.record:
+            self.record[pc] = {
+                "index" : len(self.record),
+                "bias" : direction
+            } 
+            self.table_frame.add_row([format(pc, 'b'), direction])
+            self.table_frame.set_focus(self.record[pc]["index"])
+
+    def get_or_set_bias(self, pc, direction):
+        if pc in self.record:
+            self.table_frame.set_focus(self.record[pc]["index"])
+            return self.record[pc]["bias"]
+        else:
+            self.set_bias(pc, direction)
+            return 0
         
 class LocalHistoryPredictorWidget(BHTWidget):
     def __init__(self, parent, **options):
@@ -142,7 +192,10 @@ class LocalHistoryPredictorWidget(BHTWidget):
     def update(self, pc, direction):
         i = pc & ((2 ** self.index_size) - 1)
         
-        prediction = self.table[self.pht_widget.pht[i].get_value()].prediction()
+        if self.agree_predictor:
+            prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            prediction = self.table[i].prediction()
 
         BHTWidget.update(self, pc, self.pht_widget.pht[i].get_value(), direction)
 
@@ -180,7 +233,10 @@ class PSharePredictorWidget(BHTWidget):
         pc_i = pc & ((2 ** self.index_size) - 1)
         i = pc_i ^ self.pht_widget.pht[pc_i].get_value()
         
-        prediction = self.table[i].prediction()
+        if self.agree_predictor:
+            prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            prediction = self.table[i].prediction()
 
         BHTWidget.update(self, pc, i, direction)
 
@@ -212,7 +268,10 @@ class PCPredictorWidget(BHTWidget):
     def update(self, pc, direction):
         i = pc & ((2 ** self.index_size) - 1)
 
-        prediction = self.table[i].prediction()
+        if self.agree_predictor:
+            prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            prediction = self.table[i].prediction()
 
         BHTWidget.update(self, pc, i, direction)
 
@@ -246,7 +305,10 @@ class GHRPredictorWidget(BHTWidget):
     def update(self, pc, direction):
         i = self.ghr.get_value()
 
-        prediction = self.table[i].prediction()
+        if self.agree_predictor:
+            prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            prediction = self.table[i].prediction()
 
         BHTWidget.update(self, pc, i, direction)
 
@@ -284,7 +346,10 @@ class GSharePredictorWidget(BHTWidget):
         pc_i = pc & ((2 ** self.index_size) - 1)
         i = pc_i ^ (self.ghr.get_value() & (2 ** self.index_size - 1))
 
-        prediction = self.table[i].prediction()
+        if self.agree_predictor:
+            prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
+        else:
+            prediction = self.table[i].prediction()
 
         BHTWidget.update(self, pc, i, direction)
 
