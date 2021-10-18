@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from predictor_components import nBitPredictor, nBitAgreePredictor
 from predictor_widgets import *
-from gui_widgets import ImageWidget, ScrollableFrameY
+from gui_widgets import ImageWidget, ScrollableFrameY, DiscreteIntSpinbox
 
 
 class Application(tk.Frame):
@@ -11,7 +11,7 @@ class Application(tk.Frame):
         super().__init__(master)
         self.master = master
         self.master.title("Branch Prediction Visualizer")
-        self.master.geometry("1300x700")
+        self.master.geometry("1000x700")
         self.inner = tk.Frame(self.master)
         self.inner.pack(fill="both", expand=True)
         self.pack()
@@ -26,28 +26,21 @@ class Application(tk.Frame):
 
     def simple_n_bit_predictor(self):
         self.clear()
-        self.predictor_widgets = [
-            PredictorWidget(self.inner, name="1-bit predictor", predictor=nBitPredictor(1, 0b0)),
-            PredictorWidget(self.inner, name="2-bit predictor", predictor=nBitPredictor(2, 0b00)),
-        ]
-        for widget in self.predictor_widgets:
-            widget.pack(fill="both", expand=True)
+        predictors = [nBitPredictor(1,0), nBitPredictor(2,0), nBitPredictor(3,0)]
+        names = ["1-bit counter", "2-bit counter", "3-bit counter"]
+        self.predictor_widget = NBitPredictorComparisonWidget(self.inner, predictors=predictors, headings=names)
+        self.predictor_widget.pack(fill="x", expand=True)
 
-        tk.Button(self.inner, text = "T", command = lambda : update(1)).pack()
-        tk.Button(self.inner, text = "NT", command = lambda : update(0)).pack()
-
-        def update(d):
-            for widget in self.predictor_widgets:
-                widget.update(d)
-    
+        tk.Button(self.inner, text = "T", command = lambda : self.predictor_widget.update(1)).pack()
+        tk.Button(self.inner, text = "NT", command = lambda : self.predictor_widget.update(0)).pack()
+        
         tk.Button(self.inner, text = "Back", command = self.initial_screen).pack()
 
     def choose_bht_entries(self):
         self.clear()
         tk.Label(self.inner, text = "Choose BHT entry type and counter size").pack()
 
-        num_bits_entry = tk.Entry(self.inner)
-        num_bits_entry.insert(0, "Number of bits (int)")
+        num_bits_entry = DiscreteIntSpinbox(self.inner, max=10)
         num_bits_entry.pack()
 
         bht_type_entry = ttk.Combobox(
@@ -87,9 +80,8 @@ class Application(tk.Frame):
 
     def choose_additional_settings(self):
         self.clear()
-
         tk.Label(self.inner, text = "BHT index size (BHT will have 2^(index size) entries)").pack()
-        bht_index_entry = tk.Entry(self.inner)
+        bht_index_entry = DiscreteIntSpinbox(self.inner, max=64)
         bht_index_entry.pack()
 
         if self.indexing_method == "PC":
@@ -101,7 +93,7 @@ class Application(tk.Frame):
             tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to XOR GHR to index BHT").pack()
         elif self.indexing_method == "Local History":
             tk.Label(self.inner, text = "PHT index size (PHT will have 2^(index size) entries)").pack()
-            pht_index_entry = tk.Entry(self.inner)
+            pht_index_entry = DiscreteIntSpinbox(self.inner, max=64)
             pht_index_entry.pack()
         elif self.indexing_method =="PShare":
             tk.Label(self.inner, text = "PHT index size will be the same as BHT index size.").pack()

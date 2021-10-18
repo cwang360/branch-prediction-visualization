@@ -44,9 +44,46 @@ class PredictorWidget(tk.Frame):
 
         self.misprediction_stats.config(text = "Misprediction rate: " + self.predictor.misprediction_rate())
 
-# class NBitPredictorComparisonWidget(tk.Frame):
-#     def __init__(self, parent, **options):
-#         self.table = TableWidget(column_names=["Actual"])
+class NBitPredictorComparisonWidget(tk.Frame):
+    def __init__(self, parent, **options):
+        self.predictors = options.pop("predictors")
+        self.headings =  options.pop("headings")
+        tk.Frame.__init__(self, parent, **options)
+
+        self.info = TableWidget(self, height=2, column_names=["      "] + self.headings)
+        self.outcomes = TableWidget(self, height=15, column_names=["Actual"] + self.headings)
+
+        states = ["State"]
+        for predictor in self.predictors:
+            states.append(predictor.get_state())
+        self.info.add_row(states)
+
+        stats = ["Misprediction rate"]
+        for predictor in self.predictors:
+            states.append(predictor.misprediction_rate())
+        self.info.add_row(stats)
+
+        self.info.pack(fill="x", expand=True)
+        self.outcomes.pack(fill="both", expand=True)
+
+    def update(self, d):
+        actual = 'T' if d == 1 else 'NT'
+
+        states = ["State"]
+        stats = ["Misprediction rate"]
+        outcome = [actual]
+
+        for predictor in self.predictors:
+            outcome.append(predictor.prediction())
+            predictor.update(d)
+            states.append(predictor.get_state())
+            stats.append(predictor.misprediction_rate())
+
+        # Update GUI
+        self.outcomes.add_row(outcome)
+        self.info.set_row_at_index(0, states)
+        self.info.set_row_at_index(1, stats)
+      
 
 class BHTWidget(tk.Frame):
     def __init__(self, parent, **options):

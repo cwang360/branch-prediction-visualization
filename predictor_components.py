@@ -28,6 +28,8 @@ class nBitPredictor:
 
     # Misprediction rate for each predictor, not for each branch instruction
     def misprediction_rate(self):
+        if self.total_predicted == 0:
+            return "0 out of 0 (0.00%)"
         return "{} out of {} ({:.2f}%)".format(
                 self.mispredicted, 
                 self.total_predicted, 

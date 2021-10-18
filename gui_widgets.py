@@ -9,7 +9,7 @@ class TableWidget(ttk.Frame):
         self.index = 0
 
             
-        self.table = ttk.Treeview(self, columns=cols, show='headings')
+        self.table = ttk.Treeview(self, **options, columns=cols, show='headings')
         for col in cols:
             self.table.heading(col, text=self.column_names[col])
             self.table.column(col, minwidth=0, width=4*len(self.column_names[col])+80)
@@ -89,3 +89,24 @@ class ImageWidget(ttk.Frame):
         image_panel = tk.Label(self, image = img)
         image_panel.image = img
         image_panel.pack(side = "bottom", fill = "both", expand = "yes")
+
+class DiscreteIntSpinbox(ttk.Frame):
+    def __init__(self, parent, **options):
+        max = options.pop("max")
+        
+        super().__init__(parent, **options)
+                
+        valid_values = [''] + [str(i) for i in range(1, max + 1)]
+
+        self.spinbox = ttk.Spinbox(
+            self,
+            from_=1,
+            to=max,
+            values=[i for i in range(1, max + 1)],
+            validate='key',
+            validatecommand= (self.register(lambda val : val in valid_values), '%P'),
+            wrap=True)
+        self.spinbox.pack()
+
+    def get(self):
+        return self.spinbox.get()
