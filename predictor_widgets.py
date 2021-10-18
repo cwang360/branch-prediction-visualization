@@ -89,8 +89,12 @@ class BHTWidget(tk.Frame):
     def __init__(self, parent, **options):
         self.index_size = options.pop("index_size")
         predictor = options.pop("predictor")
+
+        if "min_index" in options:
+            self.min_index = options.pop("min_index")
+
         self.agree_predictor = isinstance(predictor, nBitAgreePredictor)
-        self.table = [copy.deepcopy(predictor) for _ in range((2 ** self.index_size))]
+        self.table = [copy.deepcopy(predictor) for _ in range((1 << self.index_size))]
 
         self.prediction_stats = {}
 
@@ -120,7 +124,7 @@ class BHTWidget(tk.Frame):
 
         for i in range(len(self.table)):
             if self.agree_predictor:
-                predicted = self.table[i].prediction(0)
+                predicted = self.table[i].prediction(-1)
             else:
                 predicted = self.table[i].prediction()
             entry = [format(i, f'0{self.index_size}b'), self.table[i].get_state(), predicted]
@@ -166,7 +170,7 @@ class PHTWidget(tk.Frame):
         self.index_size = options.pop('index_size')
         tk.Frame.__init__(self, parent, **options)
 
-        self.pht = [copy.deepcopy(PatternHistoryRegister(self.history_length, 0)) for _ in range((2 ** self.index_size))]
+        self.pht = [copy.deepcopy(PatternHistoryRegister(self.history_length, 0)) for _ in range(1 << self.index_size)]
 
         tk.Label(self, text="Pattern History Table").pack()
         self.table_frame = TableWidget(self, column_names=['Index', 'Pattern History'])
@@ -227,7 +231,8 @@ class LocalHistoryPredictorWidget(BHTWidget):
 
         
     def update(self, pc, direction):
-        i = pc & ((2 ** self.index_size) - 1)
+        mask = (1 << self.pht_index_size) - 1
+        i = (pc & (mask << self.min_index)) >> self.min_index
         
         if self.agree_predictor:
             prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
@@ -238,7 +243,7 @@ class LocalHistoryPredictorWidget(BHTWidget):
 
         entry = [
             format(pc, 'b'),
-            format(i, f'0{self.index_size}b'),
+            format(i, f'0{self.pht_index_size}b'),
             self.pht_widget.pht[i].get_text(),
             prediction,
             'T' if direction == 1 else 'NT',
@@ -267,7 +272,8 @@ class PSharePredictorWidget(BHTWidget):
 
         
     def update(self, pc, direction):
-        pc_i = pc & ((2 ** self.index_size) - 1)
+        mask = (1 << self.index_size) - 1
+        pc_i = (pc & (mask << self.min_index)) >> self.min_index
         i = pc_i ^ self.pht_widget.pht[pc_i].get_value()
         
         if self.agree_predictor:
@@ -303,7 +309,8 @@ class PCPredictorWidget(BHTWidget):
         BHTWidget.__init__(self, parent, **options)
         self.pack_all()
     def update(self, pc, direction):
-        i = pc & ((2 ** self.index_size) - 1)
+        mask = (1 << self.index_size) - 1
+        i = (pc & (mask << self.min_index)) >> self.min_index
 
         if self.agree_predictor:
             prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))
@@ -380,8 +387,9 @@ class GSharePredictorWidget(BHTWidget):
         self.pack_all()
 
     def update(self, pc, direction):
-        pc_i = pc & ((2 ** self.index_size) - 1)
-        i = pc_i ^ (self.ghr.get_value() & (2 ** self.index_size - 1))
+        mask = (1 << self.index_size) - 1
+        pc_i = (pc & (mask << self.min_index)) >> self.min_index
+        i = pc_i ^ (self.ghr.get_value() & mask)
 
         if self.agree_predictor:
             prediction = self.table[i].prediction(self.bias_table.get_or_set_bias(pc, direction))

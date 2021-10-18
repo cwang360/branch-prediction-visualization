@@ -6,7 +6,7 @@ Currently only shows branch direction predictions (taken or not taken), not bran
 
 Note that this tool is simply to be used for visualizing and better understanding branch prediction accuracy of different branch prediction methods under different branch patterns, not for rigorous testing for comparison between the methods.  
 
-## Branch prediction methods covered (or in the works)
+## Branch prediction methods covered
 Compare between simple n-bit saturating counters or simulate custom branch predictor with the following architecture and choices:
 ![alt text](assets/general_architecture.png)
 - BHT entry types

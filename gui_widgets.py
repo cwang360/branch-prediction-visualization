@@ -93,16 +93,17 @@ class ImageWidget(ttk.Frame):
 class DiscreteIntSpinbox(ttk.Frame):
     def __init__(self, parent, **options):
         max = options.pop("max")
+        min = options.pop("min")
         
         super().__init__(parent, **options)
                 
-        valid_values = [''] + [str(i) for i in range(1, max + 1)]
+        valid_values = [''] + [str(i) for i in range(min, max + 1)]
 
         self.spinbox = ttk.Spinbox(
             self,
-            from_=1,
+            from_=min,
             to=max,
-            values=[i for i in range(1, max + 1)],
+            values=[i for i in range(min, max + 1)],
             validate='key',
             validatecommand= (self.register(lambda val : val in valid_values), '%P'),
             wrap=True)

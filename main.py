@@ -40,15 +40,17 @@ class Application(tk.Frame):
         self.clear()
         tk.Label(self.inner, text = "Choose BHT entry type and counter size").pack()
 
-        num_bits_entry = DiscreteIntSpinbox(self.inner, max=10)
-        num_bits_entry.pack()
+        entry_frame = tk.Frame(self.inner)
+        num_bits_entry = DiscreteIntSpinbox(entry_frame, min=1, max=10)
+        num_bits_entry.pack(side="left")
 
         bht_type_entry = ttk.Combobox(
-            self.inner, 
+            entry_frame, 
             state = "readonly", 
             values = ["-bit saturating counter", 
                     "-bit agree predictor"])
-        bht_type_entry.pack()
+        bht_type_entry.pack(side="right")
+        entry_frame.pack()
 
         def next():
             self.num_bits = int(num_bits_entry.get())
@@ -80,29 +82,41 @@ class Application(tk.Frame):
 
     def choose_additional_settings(self):
         self.clear()
-        tk.Label(self.inner, text = "BHT index size (BHT will have 2^(index size) entries)").pack()
-        bht_index_entry = DiscreteIntSpinbox(self.inner, max=64)
-        bht_index_entry.pack()
+
+        if self.indexing_method != "GHR":
+            entry_frame = tk.Frame(self.inner)
+            tk.Label(self.inner, text = "Choose bits of PC to use for indexing (lowest bit is bit 0):").pack()
+            pc_min_index_entry = DiscreteIntSpinbox(entry_frame, min=0, max=63)
+            pc_min_index_entry.grid(row=0, column=0)
+            tk.Label(entry_frame, text = " to ").grid(row=0, column=1)
+            pc_max_index_entry = DiscreteIntSpinbox(entry_frame, min=0, max=63)
+            pc_max_index_entry.grid(row=0, column=2)
+            entry_frame.pack()
 
         if self.indexing_method == "PC":
-            tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to index BHT").pack()
+            tk.Label(self.inner, text = "These bits will be used to index BHT").pack()
         elif self.indexing_method == "GHR":
-            tk.Label(self.inner, text = "GHR will have the same bit size and will be used to index BHT").pack()
+            tk.Label(self.inner, text = "GHR size (will be used to index BHT):").pack()
+            bht_index_entry = DiscreteIntSpinbox(self.inner, min=1, max=64)
+            bht_index_entry.pack()
         elif self.indexing_method == "GShare":
-            tk.Label(self.inner, text = "GHR will have the same bit size.").pack()
-            tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to XOR GHR to index BHT").pack()
+            tk.Label(self.inner, text = "GHR will have the same bit size as this range.").pack()
+            tk.Label(self.inner, text = "These bits of PC will be used to XOR GHR to index BHT").pack()
         elif self.indexing_method == "Local History":
-            tk.Label(self.inner, text = "PHT index size (PHT will have 2^(index size) entries)").pack()
-            pht_index_entry = DiscreteIntSpinbox(self.inner, max=64)
-            pht_index_entry.pack()
+            tk.Label(self.inner, text = "This portion of PC will be used to index PHT").pack()
+            tk.Label(self.inner, text = "BHT index size (BHT will have 2^(index size) entries):").pack()
+            bht_index_entry = DiscreteIntSpinbox(self.inner, min=1, max=64)
+            bht_index_entry.pack()
         elif self.indexing_method =="PShare":
-            tk.Label(self.inner, text = "PHT index size will be the same as BHT index size.").pack()
-            tk.Label(self.inner, text = "Lower (index size) bits of PC will be used to XOR corresponding PHT entry to index BHT").pack()
+            tk.Label(self.inner, text = "PHT index size and BHT index size will be the same as this range.").pack()
+            tk.Label(self.inner, text = "These bits of PC will be used to XOR corresponding PHT entry to index BHT").pack()
 
         def next():
-            self.bht_index_size = int(bht_index_entry.get())
+            self.pc_min_index = int(pc_min_index_entry.get())
+            self.pc_max_index = int(pc_max_index_entry.get())
+            self.pc_index_size = (self.pc_max_index - self.pc_min_index) + 1
             if self.indexing_method == "Local History":
-                self.pht_index_size = int(pht_index_entry.get())
+                self.bht_index_size = int(bht_index_entry.get())
             self.branch_history_table()
         tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
 
@@ -115,7 +129,10 @@ class Application(tk.Frame):
         tk.Button(self.inner, text = "Back", command = self.initial_screen).pack()
 
         tk.Label(self.inner, text = "Add a branch address (in binary) and actual direction").pack()
-        pc_entry = tk.Entry(self.inner)
+        pc_entry = tk.Entry(
+            self.inner, 
+            validate='key', 
+            validatecommand=(self.register(lambda val : val in ["0", "1"]), '%S'))
         pc_entry.pack()
         direction_entry = ttk.Combobox(self.inner, state = "readonly", values = ["Taken", "Not Taken"])
         direction_entry.pack()
@@ -156,15 +173,36 @@ class Application(tk.Frame):
         self.predictor_frame = tk.Frame(self.inner)
         self.predictor_frame.pack()
         if self.indexing_method == "PC":
-            return PCPredictorWidget(self.predictor_frame, index_size=self.bht_index_size, predictor=self.bht_entry)
+            return PCPredictorWidget(
+                self.predictor_frame, 
+                index_size=self.pc_index_size, 
+                predictor=self.bht_entry, 
+                min_index=self.pc_min_index)
         elif self.indexing_method == "GHR":
-            return GHRPredictorWidget(self.predictor_frame, ghr_size=self.bht_index_size, predictor=self.bht_entry)
+            return GHRPredictorWidget(
+                self.predictor_frame, 
+                ghr_size=self.bht_index_size, 
+                predictor=self.bht_entry)
         elif self.indexing_method == "GShare":
-            return GSharePredictorWidget(self.predictor_frame, ghr_size=self.bht_index_size, predictor=self.bht_entry, index_size=self.bht_index_size)
+            return GSharePredictorWidget(
+                self.predictor_frame, 
+                ghr_size=self.pc_index_size, 
+                predictor=self.bht_entry, 
+                index_size=self.pc_index_size, 
+                min_index=self.pc_min_index)
         elif self.indexing_method == "Local History":
-            return LocalHistoryPredictorWidget(self.predictor_frame, predictor=self.bht_entry, pht_index_size=self.pht_index_size, bht_index_size=self.bht_index_size)
+            return LocalHistoryPredictorWidget(
+                self.predictor_frame, 
+                predictor=self.bht_entry, 
+                pht_index_size=self.pc_index_size, 
+                bht_index_size=self.bht_index_size, 
+                min_index=self.pc_min_index)
         elif self.indexing_method == "PShare":
-            return PSharePredictorWidget(self.predictor_frame, index_size=self.bht_index_size, predictor=self.bht_entry)
+            return PSharePredictorWidget(
+                self.predictor_frame, 
+                index_size=self.pc_index_size, 
+                predictor=self.bht_entry, 
+                min_index=self.pc_min_index)
 
 
 root = tk.Tk()

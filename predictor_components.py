@@ -11,7 +11,7 @@ class nBitPredictor:
         if actual_direction != self.prediction_bit():
             self.mispredicted += 1
         if actual_direction == 1:
-            if self.state < (2 ** self.bits - 1):
+            if self.state < ((1 << self.bits) - 1):
                 self.state += 1
         else:
             if self.state > 0:
@@ -38,7 +38,7 @@ class nBitPredictor:
 class nBitAgreePredictor(nBitPredictor):
     def update(self, bias, actual_direction):
         if actual_direction == bias:
-            if self.state < 2 ** self.bits - 1:
+            if self.state < (1 << self.bits) - 1:
                 self.state += 1
         else:
             if self.state > 0:
@@ -57,8 +57,8 @@ class PatternHistoryRegister():
     
     def update(self, direction):
         self.register = (self.register << 1) | direction
-        if self.register >= 2 ** self.size:
-            self.register -= 2 ** self.size
+        if self.register >= (1 << self.size):
+            self.register -= (1 << self.size)
     
     def get_value(self):
         return self.register
