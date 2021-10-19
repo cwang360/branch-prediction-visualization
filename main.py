@@ -53,6 +53,9 @@ class Application(tk.Frame):
         entry_frame.pack()
 
         def next():
+            if num_bits_entry.get() == "" or bht_type_entry.get() == "":
+                messagebox.showerror('Error', 'Entries cannot be empty.')
+                return
             self.num_bits = int(num_bits_entry.get())
             self.bht_entry = nBitPredictor(self.num_bits, 0) if bht_type_entry.get() == "-bit saturating counter" else nBitAgreePredictor(self.num_bits, 0)
             self.choose_indexing_method()
@@ -74,6 +77,9 @@ class Application(tk.Frame):
         indexing_method_entry.pack()
 
         def next():
+            if indexing_method_entry.get() == "":
+                messagebox.showerror('Error', 'Entries cannot be empty.')
+                return
             self.indexing_method = indexing_method_entry.get()
             self.choose_additional_settings()
 
@@ -82,6 +88,7 @@ class Application(tk.Frame):
 
     def choose_additional_settings(self):
         self.clear()
+        entries = []
 
         if self.indexing_method != "GHR":
             entry_frame = tk.Frame(self.inner)
@@ -92,6 +99,8 @@ class Application(tk.Frame):
             pc_max_index_entry = DiscreteIntSpinbox(entry_frame, min=0, max=63)
             pc_max_index_entry.grid(row=0, column=2)
             entry_frame.pack()
+            entries.append(pc_min_index_entry)
+            entries.append(pc_max_index_entry)
 
         if self.indexing_method == "PC":
             tk.Label(self.inner, text = "These bits will be used to index BHT").pack()
@@ -99,6 +108,7 @@ class Application(tk.Frame):
             tk.Label(self.inner, text = "GHR size (will be used to index BHT):").pack()
             bht_index_entry = DiscreteIntSpinbox(self.inner, min=1, max=64)
             bht_index_entry.pack()
+            entries.append(bht_index_entry)
         elif self.indexing_method == "GShare":
             tk.Label(self.inner, text = "GHR will have the same bit size as this range.").pack()
             tk.Label(self.inner, text = "These bits of PC will be used to XOR GHR to index BHT").pack()
@@ -107,20 +117,30 @@ class Application(tk.Frame):
             tk.Label(self.inner, text = "BHT index size (BHT will have 2^(index size) entries):").pack()
             bht_index_entry = DiscreteIntSpinbox(self.inner, min=1, max=64)
             bht_index_entry.pack()
+            entries.append(bht_index_entry)
         elif self.indexing_method =="PShare":
             tk.Label(self.inner, text = "PHT index size and BHT index size will be the same as this range.").pack()
             tk.Label(self.inner, text = "These bits of PC will be used to XOR corresponding PHT entry to index BHT").pack()
 
         def next():
-            self.pc_min_index = int(pc_min_index_entry.get())
-            self.pc_max_index = int(pc_max_index_entry.get())
-            self.pc_index_size = (self.pc_max_index - self.pc_min_index) + 1
-            if self.indexing_method == "Local History":
+            for e in entries:
+                if e.get() == "":
+                    messagebox.showerror('Error', 'Entries cannot be empty.')
+                    return
+
+            if self.indexing_method != "GHR":
+                self.pc_min_index = int(pc_min_index_entry.get())
+                self.pc_max_index = int(pc_max_index_entry.get())
+                if self.pc_min_index > self.pc_max_index:
+                    messagebox.showerror('Error', 'Min index cannot be greater than max index.')
+                    return
+                self.pc_index_size = (self.pc_max_index - self.pc_min_index) + 1
+            if self.indexing_method == "Local History" or self.indexing_method == "GHR":
                 self.bht_index_size = int(bht_index_entry.get())
-            self.branch_history_table()
+            self.simulate_predictor()
         tk.Button(self.inner, text = "Next", command = next).pack(padx = 3, pady = 3)
 
-    def branch_history_table(self):  
+    def simulate_predictor(self):  
         self.clear()
 
         bht = self.get_predictor()

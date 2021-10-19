@@ -39,7 +39,6 @@ Ideas to (maybe) implement and more state-of-the-art prediction methods.
 - Additional features
     - More misprediction stats (e.g. input a # of stages to flush for each misprediction, and it'll tell you the slowdown rate compared to perfect prediction)
     - Sample T/NT patterns representing loop branches, dependent branches, etc. to show how different methods are better in certain cases.
-    - custom n-m bits of PC for indexing. Currently, lowest bits are used by default.
     - More diagram-like UI
 
 ## Usage and Dependencies
