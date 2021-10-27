@@ -293,7 +293,7 @@ class PSharePredictorWidget(BHTWidget):
             self.stats(pc)
         ]
         
-        self.pht_widget.update(i, direction)
+        self.pht_widget.update(pc_i, direction)
         self.history_table.add_row(entry)
 
 class PCPredictorWidget(BHTWidget):
